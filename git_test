@@ -1,1 +1,27 @@
-git
+# 03-05 – 14:10 git 
+
+# vscode + git 연동 
+
+ssh-keygen -t ed25519 -C "내이메일@example.com"
+(엔터를 3번 정도 쳐서 기본 설정으로 생성합니다.)
+/Users/chansoojeon/.ssh/id_ed25519): 
+cat ~/.ssh/id_ed25519.pub
+ 
+
+# repository 생성 후 작업과 연동 -=> 원격 저장소 연결(Remote Connection)
+
+git remote add origin https://github.com/zoofighter/test_gh.git
+    git branch -M main
+git push -u origin main
+
+
+https://gemini.google.com/app/b1056c318fd2d2bd
+
+**gh**
+gh repo create [test_gh] --public --source=. --remote=origin --push
+
+
+# GitHub에 있는 레포지토리를 VS Code(안티그라비티 포함)로 가져오는 과정은 **'Clone(복제) 
+vscode command git:clone
+
+
