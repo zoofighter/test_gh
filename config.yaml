@@ -1,0 +1,44 @@
+# 주식 랭킹 뉴스 시스템 설정
+
+# DART 공시 API
+dart:
+  api_key: "YOUR_DART_API_KEY"  # https://opendart.fss.or.kr 에서 발급
+
+# 뉴스 수집 설정
+collectors:
+  naver:
+    enabled: true
+    max_pages: 3
+  dart:
+    enabled: true
+  yahoo:
+    enabled: true
+  rss:
+    enabled: true
+    feeds:
+      - name: "한국경제"
+        url: "https://www.hankyung.com/feed/stock"
+      - name: "매일경제"
+        url: "https://www.mk.co.kr/rss/30100041/"
+  twitter:
+    enabled: false  # Nitter 인스턴스 가용 시 true로 변경
+    search_queries: ["코스피", "코스닥", "$AAPL", "$TSLA"]
+    max_per_query: 10
+  naver_discussion:
+    enabled: false  # 관심 종목 설정 후 true로 변경
+    max_pages: 2
+    min_views: 500
+  google_news:
+    enabled: true
+    feeds: ["kr_business", "us_business"]
+    search_queries: []
+  reddit:
+    enabled: true
+    subreddits: ["stocks", "wallstreetbets", "investing"]
+    min_score: 50
+    limit: 25
+
+# 대상 종목 (비워두면 뉴스에서 자동 추출)
+watchlist:
+  kr: []  # 예: ["005930", "000660", "373220"]
+  us: []  # 예: ["AAPL", "TSLA", "NVDA"]

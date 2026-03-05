@@ -250,7 +250,170 @@ python scheduler.py
 
 ---
 
-## 8. 주요 라이브러리
+## 8. 추가 뉴스 수집 확장 방안
+
+> 현재 8개 소스(네이버, DART, Yahoo, RSS, Twitter, 네이버토론방, Google News, Reddit) 외에 추가 가능한 뉴스 소스 목록
+
+### 8.1 국내 시장 추가 소스
+
+| # | 소스 | 수집 방식 | 데이터 유형 | API 키 | 우선순위 |
+|---|------|----------|------------|--------|---------|
+| K1 | **KRX KIND** (한국거래소 공시) | 스크레이핑 / OpenAPI | 기업 공시·IR 자료, 거래소 직접 공시 | 불필요 | ★★★ |
+| K2 | **38커뮤니케이션** | 스크레이핑 | IPO 수요예측·공모주·신규상장 정보 | 불필요 | ★★☆ |
+| K3 | **네이버 증권 리서치** | 스크레이핑 | 증권사 리포트 제목·목표가·투자의견 | 불필요 | ★★★ |
+| K4 | **이데일리** | RSS / 스크레이핑 | 실시간 증권 뉴스, 시황 분석 | 불필요 | ★★☆ |
+| K5 | **머니투데이** | RSS / 스크레이핑 | 증권·경제 뉴스 | 불필요 | ★★☆ |
+| K6 | **연합인포맥스** | 스크레이핑 | 채권·외환·증권 종합 시황 | 불필요 | ★★☆ |
+| K7 | **한국경제TV** | RSS / 스크레이핑 | 증권 영상 뉴스 텍스트, 속보 | 불필요 | ★☆☆ |
+| K8 | **텔레그램 주식 채널** | Telethon API | 리딩방·속보 채널 메시지 | API 필요 | ★☆☆ |
+| K9 | **디시인사이드 주식갤러리** | 스크레이핑 | 개인 투자자 심리·이슈 감지 | 불필요 | ★☆☆ |
+
+### 8.2 미국 시장 추가 소스
+
+| # | 소스 | 수집 방식 | 데이터 유형 | API 키 | 우선순위 |
+|---|------|----------|------------|--------|---------|
+| U1 | **SEC EDGAR** | REST API | 10-K, 10-Q, 8-K 공시 (미국판 DART) | 불필요 (User-Agent 필요) | ★★★ |
+| U2 | **Finviz** | 스크레이핑 | 종목별 뉴스 헤드라인, 스크리너 | 불필요 | ★★★ |
+| U3 | **StockTwits** | REST API | 종목별 투자자 의견·심리 지표 | 불필요 | ★★☆ |
+| U4 | **PR Newswire / Business Wire** | RSS | 기업 공식 보도자료 (실적, 계약 등) | 불필요 | ★★★ |
+| U5 | **Seeking Alpha** | RSS / 스크레이핑 | 심층 종목 분석, 실적 발표 요약 | 불필요 (제한적) | ★★☆ |
+| U6 | **MarketWatch** | RSS | 시장 뉴스, 종목 뉴스, 경제 지표 | 불필요 | ★★☆ |
+| U7 | **CNBC** | RSS | 주요 시장 뉴스, 속보 | 불필요 | ★★☆ |
+| U8 | **Earnings Whispers** | 스크레이핑 | 실적 발표 일정, 어닝 서프라이즈 | 불필요 | ★☆☆ |
+
+### 8.3 크로스마켓 / 대체 소스
+
+| # | 소스 | 수집 방식 | 데이터 유형 | API 키 | 우선순위 |
+|---|------|----------|------------|--------|---------|
+| C1 | **Investing.com** | RSS / 스크레이핑 | 글로벌 시장 뉴스, 경제 캘린더 | 불필요 | ★★☆ |
+| C2 | **Trading Economics** | 스크레이핑 | 경제 지표, 거시경제 이벤트 | 유료 API (스크레이핑 가능) | ★☆☆ |
+| C3 | **YouTube 금융 채널** | youtube-transcript-api | 증권 유튜버 영상 자막 추출 | 불필요 | ★☆☆ |
+
+### 8.4 추가 소스별 상세 설명
+
+#### K1. KRX KIND (한국거래소 공시)
+```
+URL      : https://kind.krx.co.kr
+수집방식  : OpenAPI 또는 HTML 스크레이핑
+핵심 데이터:
+  - 주요사항보고 (유상증자, 전환사채, 합병 등)
+  - 공정공시 (매출액, 수주공시)
+  - 거래소 자체 공시 (투자주의, 거래정지, 관리종목 지정)
+차별점    : DART와 달리 거래소 직접 조치(투자경고, 거래정지 등)를 포함
+구현 파일  : src/collectors/krx_kind.py
+```
+
+#### K3. 네이버 증권 리서치
+```
+URL      : https://finance.naver.com/research/
+수집방식  : HTML 스크레이핑
+핵심 데이터:
+  - 증권사 리포트 제목
+  - 투자의견 (매수/중립/매도)
+  - 목표주가
+  - 발행 증권사
+차별점    : 기관 의견 변화를 추적 → 목표가 상향/하향이 주가에 직접 영향
+구현 파일  : src/collectors/naver_research.py
+```
+
+#### U1. SEC EDGAR
+```
+URL      : https://efts.sec.gov/LATEST/search-index?q=...
+API      : https://data.sec.gov/submissions/CIK{cik}.json
+수집방식  : REST API (Full-Text Search API)
+핵심 데이터:
+  - 8-K (중요 사건 보고 - M&A, 경영진 변경, 실적 등)
+  - 10-K / 10-Q (연간/분기 실적 보고서)
+  - SC 13D/G (대량 보유 변동)
+차별점    : 미국 공식 공시로 가장 높은 신뢰도, DART와 동급
+헤더 필수  : User-Agent에 이메일 포함 필요
+라이브러리 : sec-edgar-downloader, edgartools
+구현 파일  : src/collectors/sec_edgar.py
+```
+
+#### U2. Finviz
+```
+URL      : https://finviz.com/quote.ashx?t={ticker}
+수집방식  : HTML 스크레이핑 (뉴스 섹션)
+핵심 데이터:
+  - 종목별 뉴스 헤드라인 (여러 소스 통합)
+  - 뉴스 발행 시간
+  - 원문 링크
+차별점    : 여러 뉴스 소스를 종목 단위로 통합 제공
+라이브러리 : finvizfinance
+구현 파일  : src/collectors/finviz.py
+```
+
+#### U4. PR Newswire / Business Wire
+```
+RSS 피드:
+  - PR Newswire: https://www.prnewswire.com/rss/financial-services-latest-news.rss
+  - Business Wire: https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRXQ==
+  - GlobeNewsWire: https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire
+수집방식  : RSS (feedparser)
+핵심 데이터:
+  - 기업 공식 보도자료 (실적 발표, 계약 체결, 인수합병 등)
+차별점    : 기업이 직접 발표한 1차 소스 → 높은 신뢰도
+구현 파일  : src/collectors/press_release.py (RSS 수집기 확장)
+```
+
+### 8.5 소스 신뢰도 가중치 (확장안)
+
+```
+현재 소스                          추가 소스
+─────────────────────────────     ─────────────────────────────
+DART 공시           : 25점        KRX KIND            : 25점
+Yahoo Finance       : 18점        SEC EDGAR           : 25점
+RSS (한경/매경)     : 18점        PR Newswire 등      : 22점
+Naver 금융뉴스      : 15점        네이버 리서치 리포트 : 20점
+Google News         : 14점        Finviz              : 16점
+Reddit              : 8점         MarketWatch RSS     : 16점
+Twitter/X           : 8점         Seeking Alpha       : 14점
+Naver 종목토론방    : 6점         StockTwits           : 8점
+                                  38커뮤니케이션       : 10점
+                                  텔레그램 채널        : 6점
+```
+
+### 8.6 추가 구현 우선순위 로드맵
+
+#### Phase 4A - 공시·리서치 강화 (우선)
+| 순서 | 소스 | 사유 |
+|------|------|------|
+| 1 | SEC EDGAR (U1) | 미국 공시 = 주가 영향 최대, 무료 API 제공 |
+| 2 | KRX KIND (K1) | 거래소 직접 공시, DART 보완 |
+| 3 | 네이버 리서치 (K3) | 증권사 투자의견·목표가 = 개인 투자자 영향 大 |
+| 4 | PR Newswire/BW (U4) | 기업 공식 보도자료, RSS로 간편 수집 |
+
+#### Phase 4B - 뉴스 소스 다양화
+| 순서 | 소스 | 사유 |
+|------|------|------|
+| 5 | Finviz (U2) | 미국 종목별 뉴스 통합 허브 |
+| 6 | 이데일리/머니투데이 (K4/K5) | 국내 뉴스 커버리지 확대 |
+| 7 | MarketWatch/CNBC (U6/U7) | 미국 시장 뉴스 보강 |
+| 8 | StockTwits (U3) | 미국 개인투자자 심리 데이터 |
+
+#### Phase 4C - 대체 데이터
+| 순서 | 소스 | 사유 |
+|------|------|------|
+| 9 | 38커뮤니케이션 (K2) | IPO 특화 정보 |
+| 10 | Seeking Alpha (U5) | 심층 분석 |
+| 11 | 텔레그램 (K8) | 속보성 데이터 |
+| 12 | YouTube 자막 (C3) | 대체 데이터 실험 |
+
+### 8.7 추가 소스 공통 구현 가이드
+
+```
+1. 모든 수집기는 BaseCollector를 상속하여 구현
+2. collect() 메서드에서 List[NewsItem]을 반환
+3. config.yaml에 enabled/disabled 플래그 추가
+4. 소스별 rate limit 준수 (sleep 간격 설정)
+5. 실패 시 로그 기록 후 다음 소스 계속 진행 (기존 에러 처리 패턴 유지)
+6. 소스 신뢰도 점수를 SOURCE_CREDIBILITY 딕셔너리에 등록
+```
+
+---
+
+## 9. 주요 라이브러리
 
 | 라이브러리 | 용도 | 버전 |
 |-----------|------|------|
