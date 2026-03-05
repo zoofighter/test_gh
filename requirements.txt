@@ -4,5 +4,8 @@ beautifulsoup4>=4.12
 feedparser>=6.0
 yfinance>=0.2.36
 
+# 전처리
+pykrx>=1.0
+
 # 유틸리티
 pyyaml>=6.0

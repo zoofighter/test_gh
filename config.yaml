@@ -38,7 +38,21 @@ collectors:
     min_score: 50
     limit: 25
 
-# 대상 종목 (비워두면 뉴스에서 자동 추출)
+# 대상 종목
 watchlist:
-  kr: []  # 예: ["005930", "000660", "373220"]
-  us: []  # 예: ["AAPL", "TSLA", "NVDA"]
+  kr:
+    - "005930"   # 삼성전자
+    - "000660"   # SK하이닉스
+    - "373220"   # LG에너지솔루션
+    - "005380"   # 현대차
+    - "035420"   # NAVER
+  us:
+    - "AAPL"     # 애플
+    - "TSLA"     # 테슬라
+    - "NVDA"     # 엔비디아
+    - "MSFT"     # 마이크로소프트
+    - "AMZN"     # 아마존
+
+# DB 설정
+database:
+  path: "data/stock_ranking.db"
