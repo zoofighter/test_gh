@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""주식 랭킹 뉴스 시스템 - 뉴스 수집 + DB 저장"""
+"""주식 랭킹 뉴스 시스템 - 뉴스 수집 + 전처리 + 랭킹"""
 
 import argparse
 import logging
@@ -21,6 +21,10 @@ from src.database.repository import Repository
 from src.preprocessor.dedup import deduplicate
 from src.preprocessor.stock_mapper import map_stocks
 from src.preprocessor.categorizer import categorize
+from src.stock_data.kr_stock import fetch_kr_stock_prices
+from src.stock_data.us_stock import fetch_us_stock_prices
+from src.ranking.engine import NewsRankingEngine, RankingEngine
+from src.ranking.impact_tracker import ImpactTracker
 
 
 def setup_logging(verbose: bool = False):
@@ -127,6 +131,81 @@ def save_to_db(repo: Repository, news_items: list) -> int:
     return saved
 
 
+def fetch_stock_prices(repo: Repository):
+    """DB에 등록된 종목의 주가 데이터 수집"""
+    stocks = repo.get_all_stocks()
+    if not stocks:
+        logging.info("[Price] 등록된 종목이 없습니다.")
+        return
+
+    kr_codes = [s["code"] for s in stocks if s["code"].isdigit() and len(s["code"]) == 6]
+    us_codes = [s["code"] for s in stocks if not s["code"].isdigit()]
+
+    if kr_codes:
+        logging.info(f"[Price] 한국 종목 {len(kr_codes)}개 주가 수집")
+        fetch_kr_stock_prices(kr_codes, repo, days=35)
+
+    if us_codes:
+        logging.info(f"[Price] 미국 종목 {len(us_codes)}개 주가 수집")
+        fetch_us_stock_prices(us_codes, repo, days=35)
+
+    logging.info("[Price] 주가 수집 완료")
+
+
+def run_rankings(repo: Repository, config: dict):
+    """뉴스 랭킹 + 종목 랭킹 + 영향 분석"""
+    # DB에서 최근 뉴스 로드
+    recent_news = repo.get_recent_news(days=1)
+    if not recent_news:
+        logging.warning("[Ranking] 최근 뉴스가 없습니다.")
+        return [], []
+
+    news_for_ranking = [dict(n) for n in recent_news]
+
+    # 뉴스 랭킹 (개별 뉴스 점수)
+    news_engine = NewsRankingEngine(config, repo)
+    news_rankings = news_engine.run(news_for_ranking)
+
+    # 종목 랭킹 (선택적)
+    stock_rankings = []
+    if config.get("ranking", {}).get("stock_level_enabled", True):
+        stock_engine = RankingEngine(config, repo)
+        stock_rankings = stock_engine.run(news_for_ranking)
+
+    # 영향 분석
+    tracker = ImpactTracker(repo)
+    tracker.calculate_impacts()
+
+    return news_rankings, stock_rankings
+
+
+def print_rankings(news_rankings: list, stock_rankings: list):
+    """랭킹 결과를 터미널에 출력"""
+    if news_rankings:
+        print(f"\n{'='*80}")
+        print(f" 뉴스 영향력 랭킹 Top {len(news_rankings)}")
+        print(f"{'='*80}")
+        for r in news_rankings:
+            stock_info = f" [{r.get('stock_code', '')}]" if r.get("stock_code") else ""
+            cat_info = f" ({r.get('category', '')})" if r.get("category") else ""
+            print(f"  {r['rank']:2d}. [{r['score']:5.1f}점] [{r['source']}]{stock_info}{cat_info}")
+            print(f"      {r['title']}")
+            if r.get("impact_reason"):
+                print(f"      사유: {r['impact_reason']}")
+            print()
+
+    if stock_rankings:
+        print(f"\n{'='*80}")
+        print(f" 종목 영향력 랭킹 Top {len(stock_rankings)}")
+        print(f"{'='*80}")
+        for r in stock_rankings:
+            print(f"  {r['rank']:2d}. [{r['score']:5.1f}점] {r['stock_name']} ({r['stock_code']})")
+            print(f"      뉴스 {r['news_count']}건 | {r.get('reason', '')}")
+            if r.get("top_news_title"):
+                print(f"      대표뉴스: {r['top_news_title']}")
+            print()
+
+
 def print_results(news_items: list):
     """수집 결과를 터미널에 출력"""
     if not news_items:
@@ -176,6 +255,8 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="상세 로그 출력")
     parser.add_argument("--no-collect", action="store_true", help="뉴스 수집 건너뛰기")
     parser.add_argument("--no-save", action="store_true", help="DB 저장 건너뛰기")
+    parser.add_argument("--no-price", action="store_true", help="주가 수집 건너뛰기")
+    parser.add_argument("--no-rank", action="store_true", help="랭킹 건너뛰기")
     parser.add_argument("--stats", action="store_true", help="DB 저장 현황만 조회")
     args = parser.parse_args()
 
@@ -209,11 +290,22 @@ def main():
         if not args.no_save:
             save_to_db(repo, news_items)
             print_db_stats(repo)
-
-        # 30일 지난 데이터 정리
-        repo.cleanup_old_data(days=30)
     else:
         logging.info("뉴스 수집 건너뛰기")
+
+    # 주가 수집
+    if not args.no_price:
+        logging.info("--- 주가 수집 시작 ---")
+        fetch_stock_prices(repo)
+
+    # 랭킹
+    if not args.no_rank:
+        logging.info("--- 랭킹 분석 시작 ---")
+        news_rankings, stock_rankings = run_rankings(repo, config)
+        print_rankings(news_rankings, stock_rankings)
+
+    # 30일 지난 데이터 정리
+    repo.cleanup_old_data(days=30)
 
     logging.info("=== 완료 ===")
 

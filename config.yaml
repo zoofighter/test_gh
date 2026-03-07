@@ -53,6 +53,34 @@ watchlist:
     - "MSFT"     # 마이크로소프트
     - "AMZN"     # 아마존
 
+# 랭킹 설정
+ranking:
+  top_n: 30
+  news_batch_size: 20
+  max_news_per_stock: 10
+  stock_level_enabled: true
+  weights:
+    coverage: 25
+    keyword: 25
+    volume: 25
+    source: 25
+
+# 로컬 LLM (LM Studio) - 선택사항
+lm_studio:
+  base_url: "http://localhost:1234/v1"
+  api_key: "lm-studio"
+  model: "local-model"
+  temperature: 0.1
+
+# 온라인 LLM 폴백 - 선택사항
+online_llm:
+  enabled: false
+  provider: "openai"    # openai 또는 anthropic
+  api_key: "YOUR_API_KEY"
+  model: "gpt-4o-mini"
+  temperature: 0.1
+  max_tokens: 4096
+
 # DB 설정
 database:
   path: "data/stock_ranking.db"
